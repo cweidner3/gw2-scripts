@@ -7,27 +7,72 @@
 # If you don't want the boon table or DirectX 9 Vulkan Layer translation, enter
 # 0 instead of 1.
 #
+# If lutris exists with a game name 'Guild Wars 2', this script will use that
+# directory path if it exists. Otherwise, it'll try to use the one configured
+# in this file.
+#
+# The boon table and d9vk install boolean can be overridden by setting the
+# environment varaibles BT_INSTALL=1 VK_INSTALL=1 whne running this script.
+#
+# A configuration file can be used, this file should contain one or more of the
+# following. The file name should be in the same folder named gw2-scripts.conf
+#
+# - GW2_INSTALL_PATH: [str] Path to GW2 install directory.
+# - BT_INSTALL: [int] 1 to install, otherwise skip.
+# - VK_INSTALL: [int] 1 to install, otherwise skip.
+# - DRY_RUN: [int] 1 to dry run the script, i.e. don't copy to installation.
+#
+
+if [[ $1 =~ "--dry-run" ]]; then
+    DRY_RUN=1
+fi
 
 function die() {
     echo "Error: $*" >&2
     exit 1
 }
 
+. "$(cd "$(dirname "$0")" && pwd)/gw2-scripts.conf"
+
+which lutris > /dev/null
+if [[ -z $GW2_INSTALL_PATH ]] && [[ $? -eq 0 ]]; then
+read -d ''  PY_LUTRIS_SCRIPT <<"EOF"
+import json
+import sys
+data = json.loads(sys.stdin.read())
+data = filter(lambda x: x['name'] == 'Guild Wars 2', data)
+data = map(lambda x: x['directory'], data)
+data = next(data)
+if not data:
+    sys.exit(1)
+print(data)
+EOF
+    LUTRIS_DATA=$(lutris --list-games --json)
+    if [[ $? -eq 0 ]]; then
+        LUTRIS_DATA=$(echo "${LUTRIS_DATA}" | python3 -c "${PY_LUTRIS_SCRIPT}")
+        if [[ $? -eq 0 ]] && [[ -n ${LUTRIS_DATA} ]]; then
+            GW2_INSTALL_PATH="${LUTRIS_DATA}"
+        fi
+    fi
+fi
+
 ### Configuration - Change this to the correct path
 
-GW2_INSTALL_PATH="/home/user/Games/Guild Wars 2"
+if [[ -z ${GW2_INSTALL_PATH} ]]; then
+    GW2_INSTALL_PATH="/home/user/Games/Guild Wars 2"
+fi
 [[ ! -f ${GW2_INSTALL_PATH}/Gw2-64.exe ]] && die "Expecting install path to include Gw2-64.exe"
 [[ ! -d ${GW2_INSTALL_PATH}/bin64 ]] && die "Expecting install path to include bin64/"
 
 ADPS_URL="https://www.deltaconnected.com/arcdps/x64/d3d9.dll"
 ADPS_FILE="bin64/d3d9.dll"
 
-BT_INSTALL=1
+BT_INSTALL=${BT_INSTALL:-1}
 BT_OWNER="knoxfighter"
 BT_REPO="GW2-ArcDPS-Boon-Table"
 BT_FILE="bin64/d3d9_arcdps_table.dll"
 
-VK_INSTALL=0
+VK_INSTALL=${VK_INSTALL:-0}
 VK_OWNER="Joshua-Ashton"
 VK_REPO="d9vk"
 VK_FILE="bin64/d3d9_chainload.dll"
@@ -98,8 +143,10 @@ function do_install() {
     local old_md5=$(md5sum "${dest_file}" | awk '{print $1}')
     local new_md5=$(md5sum "${src_file}" | awk '{print $1}')
     if [[ ${old_md5} != ${new_md5} ]]; then
-        cp "${src_file}" "${dest_file}"
-        chmod 0755 "${dest_file}"
+        if [[ $DRY_RUN -ne 1 ]]; then
+            cp "${src_file}" "${dest_file}"
+            chmod 0755 "${dest_file}"
+        fi
         echo "${dest_file}: CHANGED"
     else
         echo "${dest_file}: UNCHANGED"
