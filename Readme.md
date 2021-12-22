@@ -5,12 +5,10 @@
 Use this script to aid in the installation of ArcDPS and other related plugins
 to the Guild Wars installation.
 
-If GW2 is installed and maintained with [lutris][], then it should pick up the
-install path with [lutris][]. Also note, if you want this feature than
-[python-magic][] must also be installed which may be avaliable with your
-package manager.
+**Setup**
 
-Otherwise, create a config file in this repo, `gw2-scripts.conf`.
+If not using the lutris feature shown below, create a config file in this repo,
+`gw2-scripts.conf`.
 
 ```conf
 # Path to the directory containing Gw2-64.exe
@@ -29,6 +27,19 @@ BT_INSTALL=1
 #   1  Do include
 VK_INSTALL=0
 ```
+
+**Running**
+
+```bash
+~$ ./gw2-addons-install.sh
+```
+
+### Lutris
+
+If GW2 is installed and maintained with [lutris][], then it should pick up the
+install path with [lutris][]. Also note, if you want this feature than
+[python-magic][] must also be installed which may be avaliable with your
+package manager.
 
 [lutris]: https://lutris.net/
 [python-magic]: https://github.com/ahupp/python-magic
